@@ -2,6 +2,7 @@
 
 # deploy.sh - Dockerized Application Deployment Script
 # Section 1: Parameter Collection and Validation
+# Section 2: Repository Cloning
 
 set -e  # Exit on any error
 
@@ -114,7 +115,7 @@ prompt_with_validation() {
     done
 }
 
-# Main parameter collection function
+# Section 1: Parameter Collection
 collect_parameters() {
     log "Starting parameter collection..."
     echo "=========================================="
@@ -206,9 +207,144 @@ export_parameters() {
     export APP_PORT
 }
 
+# Section 2: Repository Cloning
+clone_repository() {
+    log "Starting Section 2: Repository Cloning"
+    echo "=========================================="
+    echo "  Section 2: Repository Cloning"
+    echo "=========================================="
+    
+    # Extract repository name from URL for folder name
+    REPO_NAME=$(basename "$GIT_REPO_URL" .git)
+    CLONE_DIR="$PWD/$REPO_NAME"
+    
+    log "Repository name: $REPO_NAME"
+    log "Target directory: $CLONE_DIR"
+    
+    # Prepare Git credentials
+    # For HTTPS URLs, embed PAT in the URL
+    if [[ "$GIT_REPO_URL" =~ ^https:// ]]; then
+        # Insert PAT into the Git URL
+        AUTH_GIT_URL=$(echo "$GIT_REPO_URL" | sed "s|https://|https://token:${GIT_PAT}@|")
+    else
+        # For SSH URLs, use the original URL (PAT not needed)
+        AUTH_GIT_URL="$GIT_REPO_URL"
+        log "Using SSH URL - ensure SSH key is configured for Git access"
+    fi
+    
+    # Check if repository directory already exists
+    if [ -d "$CLONE_DIR" ]; then
+        log "Repository directory already exists. Pulling latest changes..."
+        
+        cd "$CLONE_DIR"
+        
+        # Check if this is actually a git repository
+        if [ ! -d ".git" ]; then
+            log_error "Directory exists but is not a Git repository: $CLONE_DIR"
+            log "Removing existing directory and cloning fresh..."
+            cd ..
+            rm -rf "$CLONE_DIR"
+        else
+            # Stash any local changes to avoid conflicts
+            if git diff --quiet && git diff --staged --quiet; then
+                log "No local changes detected"
+            else
+                log_warning "Local changes detected. Stashing them..."
+                if ! git stash push -m "Auto-stashed by deployment script $(date +'%Y-%m-%d %H:%M:%S')"; then
+                    log_error "Failed to stash local changes"
+                    exit 1
+                fi
+                log_success "Local changes stashed successfully"
+            fi
+            
+            # Fetch and pull latest changes
+            log "Fetching latest changes from remote..."
+            if ! git fetch origin; then
+                log_error "Failed to fetch from remote repository"
+                exit 1
+            fi
+            
+            log "Pulling latest changes..."
+            if ! git pull origin "$BRANCH_NAME"; then
+                log_error "Failed to pull changes from branch $BRANCH_NAME"
+                exit 1
+            fi
+            
+            log_success "Repository updated successfully"
+            cd ..
+            return 0
+        fi
+    fi
+    
+    # Clone the repository (if we get here, either directory didn't exist or was removed)
+    log "Cloning repository from: $GIT_REPO_URL"
+    
+    if [[ "$GIT_REPO_URL" =~ ^https:// ]]; then
+        # Use authenticated URL with PAT for HTTPS
+        if ! git clone "$AUTH_GIT_URL" "$CLONE_DIR"; then
+            log_error "Failed to clone repository"
+            # Clean up on failure
+            if [ -d "$CLONE_DIR" ]; then
+                rm -rf "$CLONE_DIR"
+            fi
+            exit 1
+        fi
+    else
+        # Use original URL for SSH
+        if ! git clone "$GIT_REPO_URL" "$CLONE_DIR"; then
+            log_error "Failed to clone repository via SSH"
+            if [ -d "$CLONE_DIR" ]; then
+                rm -rf "$CLONE_DIR"
+            fi
+            exit 1
+        fi
+    fi
+    
+    log_success "Repository cloned successfully"
+    
+    # Switch to specified branch
+    cd "$CLONE_DIR"
+    
+    # Check if branch exists
+    if git show-ref --verify --quiet "refs/heads/$BRANCH_NAME"; then
+        log "Switching to existing branch: $BRANCH_NAME"
+        if ! git checkout "$BRANCH_NAME"; then
+            log_error "Failed to switch to branch $BRANCH_NAME"
+            exit 1
+        fi
+    else
+        # Check if branch exists remotely
+        if git ls-remote --heads origin "$BRANCH_NAME" | grep -q "$BRANCH_NAME"; then
+            log "Branch exists remotely. Creating local tracking branch: $BRANCH_NAME"
+            if ! git checkout -b "$BRANCH_NAME" "origin/$BRANCH_NAME"; then
+                log_error "Failed to create tracking branch for $BRANCH_NAME"
+                exit 1
+            fi
+        else
+            log_error "Branch $BRANCH_NAME does not exist locally or remotely"
+            log "Available branches:"
+            git branch -r
+            exit 1
+        fi
+    fi
+    
+    log_success "Switched to branch: $BRANCH_NAME"
+    
+    # Get the latest commit info
+    LATEST_COMMIT=$(git log -1 --oneline)
+    log "Latest commit: $LATEST_COMMIT"
+    
+    cd ..
+    
+    # Export repository path for later use
+    export REPO_DIR="$CLONE_DIR"
+    
+    log_success "Section 2 completed successfully"
+}
+
 # Main execution
 main() {
-    log "Starting deployment script - Section 1"
+    log "Starting deployment script"
     
     # Check if running interactively
     if [ ! -t 0 ]; then
@@ -216,18 +352,24 @@ main() {
         exit 1
     fi
     
+    # Section 1: Parameter Collection
     collect_parameters
     export_parameters
     
-    log_success "Section 1 completed successfully. Parameters are ready for deployment."
+    # Section 2: Repository Cloning
+    clone_repository
+    
+    log_success "Sections 1-2 completed successfully"
     
     # Display next steps
     echo
     log "Next steps:"
-    log "1. SSH connection test to remote server"
-    log "2. Clone and build application"
-    log "3. Deploy Docker containers"
+    log "1. Test SSH connection to remote server"
+    log "2. Build Docker images"
+    log "3. Deploy to remote server"
     echo
+    
+    log "Repository ready at: $REPO_DIR"
 }
 
 # Run main function

@@ -77,3 +77,58 @@ Are these parameters correct? (y/n): [0;32m[2025-10-21 14:16:39] SUCCESS:[0m A
 [0;34m[2025-10-21 14:16:39][0m 2. Clone and build application
 [0;34m[2025-10-21 14:16:39][0m 3. Deploy Docker containers
 
+[0;34m[2025-10-21 14:33:43][0m Starting deployment script
+[0;34m[2025-10-21 14:33:43][0m Starting parameter collection...
+==========================================
+  Dockerized Application Deployment
+  Section 1: Parameter Collection
+==========================================
+
+Git Repository URL: [0;32m[2025-10-21 14:33:57] SUCCESS:[0m Git URL validated
+
+Note: Your PAT will be hidden while typing
+Personal Access Token (PAT): 
+[0;32m[2025-10-21 14:34:13] SUCCESS:[0m PAT validated
+
+Branch name [default: main]: [0;34m[2025-10-21 14:34:17][0m Using branch: master
+
+[0;34m[2025-10-21 14:34:17][0m Remote Server SSH Details:
+SSH Username: Server IP address: [0;32m[2025-10-21 14:34:41] SUCCESS:[0m IP address validated
+SSH key path [default: ~/.ssh/id_rsa]: [0;32m[2025-10-21 14:34:52] SUCCESS:[0m SSH key validated
+
+Application port (internal container port): [0;32m[2025-10-21 14:35:01] SUCCESS:[0m Port validated
+
+[0;34m[2025-10-21 14:35:01][0m Parameter Collection Complete:
+------------------------------------------
+[0;34m[2025-10-21 14:35:01][0m Git Repository: https://github.com/Peliah/pick-me-backend.git
+[0;34m[2025-10-21 14:35:01][0m Branch: master
+[0;34m[2025-10-21 14:35:01][0m SSH Username: root
+[0;34m[2025-10-21 14:35:01][0m Server IP: 161.35.230.138
+[0;34m[2025-10-21 14:35:01][0m SSH Key: /home/pelz/.ssh/id_ed25519
+[0;34m[2025-10-21 14:35:01][0m App Port: 3040
+------------------------------------------
+
+Are these parameters correct? (y/n): [0;32m[2025-10-21 14:35:13] SUCCESS:[0m All parameters collected and validated successfully
+[0;34m[2025-10-21 14:35:13][0m Starting Section 2: Repository Cloning
+==========================================
+  Section 2: Repository Cloning
+==========================================
+[0;34m[2025-10-21 14:35:13][0m Repository name: pick-me-backend
+[0;34m[2025-10-21 14:35:13][0m Target directory: /home/pelz/Documents/Code/HNG-13/devops-tasks/docker-deploy-script/pick-me-backend
+[0;34m[2025-10-21 14:35:13][0m Cloning repository from: https://github.com/Peliah/pick-me-backend.git
+Cloning into '/home/pelz/Documents/Code/HNG-13/devops-tasks/docker-deploy-script/pick-me-backend'...
+[0;32m[2025-10-21 14:35:17] SUCCESS:[0m Repository cloned successfully
+[0;34m[2025-10-21 14:35:17][0m Switching to existing branch: master
+Already on 'master'
+Your branch is up to date with 'origin/master'.
+[0;32m[2025-10-21 14:35:17] SUCCESS:[0m Switched to branch: master
+[0;34m[2025-10-21 14:35:17][0m Latest commit: 3194737 added dockerfile
+[0;32m[2025-10-21 14:35:17] SUCCESS:[0m Section 2 completed successfully
+[0;32m[2025-10-21 14:35:17] SUCCESS:[0m Sections 1-2 completed successfully
+
+[0;34m[2025-10-21 14:35:17][0m Next steps:
+[0;34m[2025-10-21 14:35:17][0m 1. Test SSH connection to remote server
+[0;34m[2025-10-21 14:35:17][0m 2. Build Docker images
+[0;34m[2025-10-21 14:35:17][0m 3. Deploy to remote server
+
+[0;34m[2025-10-21 14:35:17][0m Repository ready at: /home/pelz/Documents/Code/HNG-13/devops-tasks/docker-deploy-script/pick-me-backend
