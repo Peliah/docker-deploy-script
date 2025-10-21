@@ -1,0 +1,79 @@
+[0;34m[2025-10-21 13:06:21][0m Starting deployment script - Section 1
+[0;34m[2025-10-21 13:06:21][0m Starting parameter collection...
+==========================================
+  Dockerized Application Deployment
+  Section 1: Parameter Collection
+==========================================
+
+Git Repository URL: [0;32m[2025-10-21 13:08:24] SUCCESS:[0m Git URL validated
+
+Note: Your PAT will be hidden while typing
+Personal Access Token (PAT): 
+[0;32m[2025-10-21 13:10:41] SUCCESS:[0m PAT validated
+
+Branch name [default: main]: [0;34m[2025-10-21 13:11:03][0m Using branch: master
+
+[0;34m[2025-10-21 13:11:03][0m Remote Server SSH Details:
+SSH Username: Server IP address: [0;32m[2025-10-21 13:16:26] SUCCESS:[0m IP address validated
+SSH key path [default: ~/.ssh/id_rsa]: [0;34m[2025-10-21 13:32:43][0m Starting deployment script - Section 1
+[0;34m[2025-10-21 13:32:43][0m Starting parameter collection...
+==========================================
+  Dockerized Application Deployment
+  Section 1: Parameter Collection
+==========================================
+
+Git Repository URL: [0;31m[2025-10-21 13:33:00] ERROR:[0m Invalid Git repository URL format. Must be HTTPS (https://...git) or SSH (git@...git) format.
+[1;33m[2025-10-21 13:33:00] WARNING:[0m Validation failed. Please try again.
+Git Repository URL: [0;32m[2025-10-21 13:33:13] SUCCESS:[0m Git URL validated
+
+Note: Your PAT will be hidden while typing
+Personal Access Token (PAT): 
+[0;32m[2025-10-21 13:33:21] SUCCESS:[0m PAT validated
+
+Branch name [default: main]: [0;34m[2025-10-21 13:33:26][0m Using branch: master
+
+[0;34m[2025-10-21 13:33:26][0m Remote Server SSH Details:
+SSH Username: Server IP address: [0;32m[2025-10-21 13:34:00] SUCCESS:[0m IP address validated
+SSH key path [default: ~/.ssh/id_rsa]: [0;31m[2025-10-21 13:39:17] ERROR:[0m SSH key file not found: /root/.ssh/id_ed25519
+[1;33m[2025-10-21 13:39:17] WARNING:[0m Please provide a valid SSH key path
+SSH key path [default: ~/.ssh/id_rsa]: [0;32m[2025-10-21 13:52:22] SUCCESS:[0m SSH key validated
+
+Application port (internal container port): [0;34m[2025-10-21 14:12:09][0m Starting deployment script - Section 1
+[0;34m[2025-10-21 14:12:09][0m Starting parameter collection...
+==========================================
+  Dockerized Application Deployment
+  Section 1: Parameter Collection
+==========================================
+
+Git Repository URL: [0;32m[2025-10-21 14:13:46] SUCCESS:[0m Git URL validated
+
+Note: Your PAT will be hidden while typing
+Personal Access Token (PAT): 
+[0;32m[2025-10-21 14:14:00] SUCCESS:[0m PAT validated
+
+Branch name [default: main]: [0;34m[2025-10-21 14:14:04][0m Using branch: master
+
+[0;34m[2025-10-21 14:14:04][0m Remote Server SSH Details:
+SSH Username: Server IP address: [0;32m[2025-10-21 14:14:31] SUCCESS:[0m IP address validated
+SSH key path [default: ~/.ssh/id_rsa]: [0;32m[2025-10-21 14:14:49] SUCCESS:[0m SSH key validated
+
+Application port (internal container port): [0;32m[2025-10-21 14:14:53] SUCCESS:[0m Port validated
+
+[0;34m[2025-10-21 14:14:53][0m Parameter Collection Complete:
+------------------------------------------
+[0;34m[2025-10-21 14:14:53][0m Git Repository: https://github.com/Peliah/pick-me-backend.git
+[0;34m[2025-10-21 14:14:53][0m Branch: master
+[0;34m[2025-10-21 14:14:53][0m SSH Username: root
+[0;34m[2025-10-21 14:14:53][0m Server IP: 161.35.230.138
+[0;34m[2025-10-21 14:14:53][0m SSH Key: /home/pelz/.ssh/id_ed25519
+[0;34m[2025-10-21 14:14:54][0m App Port: 3040
+------------------------------------------
+
+Are these parameters correct? (y/n): [0;32m[2025-10-21 14:16:39] SUCCESS:[0m All parameters collected and validated successfully
+[0;32m[2025-10-21 14:16:39] SUCCESS:[0m Section 1 completed successfully. Parameters are ready for deployment.
+
+[0;34m[2025-10-21 14:16:39][0m Next steps:
+[0;34m[2025-10-21 14:16:39][0m 1. SSH connection test to remote server
+[0;34m[2025-10-21 14:16:39][0m 2. Clone and build application
+[0;34m[2025-10-21 14:16:39][0m 3. Deploy Docker containers
+
