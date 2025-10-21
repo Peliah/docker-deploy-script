@@ -3,6 +3,7 @@
 # deploy.sh - Dockerized Application Deployment Script
 # Section 1: Parameter Collection and Validation
 # Section 2: Repository Cloning
+# Section 3: Navigate and Verify Docker Files
 
 set -e  # Exit on any error
 
@@ -114,6 +115,10 @@ prompt_with_validation() {
         fi
     done
 }
+
+# Global variables
+REPO_DIR=""
+CLONE_DIR=""
 
 # Section 1: Parameter Collection
 collect_parameters() {
@@ -271,6 +276,9 @@ clone_repository() {
             fi
             
             log_success "Repository updated successfully"
+            # Set REPO_DIR after successful pull
+            REPO_DIR="$CLONE_DIR"
+            export REPO_DIR
             cd ..
             return 0
         fi
@@ -334,12 +342,159 @@ clone_repository() {
     LATEST_COMMIT=$(git log -1 --oneline)
     log "Latest commit: $LATEST_COMMIT"
     
+    # Set and export REPO_DIR before going back
+    REPO_DIR="$CLONE_DIR"
+    export REPO_DIR
+    
     cd ..
     
-    # Export repository path for later use
-    export REPO_DIR="$CLONE_DIR"
-    
     log_success "Section 2 completed successfully"
+}
+
+# Section 3: Navigate and Verify Docker Files
+navigate_and_verify_docker() {
+    log "Starting Section 3: Navigate and Verify Docker Files"
+    echo "=========================================="
+    echo "  Section 3: Navigate and Verify Docker Files"
+    echo "=========================================="
+    
+    # Debug: Check what variables are set
+    log "Debug: Current directory: $(pwd)"
+    log "Debug: REPO_DIR value: ${REPO_DIR:-NOT SET}"
+    log "Debug: CLONE_DIR value: ${CLONE_DIR:-NOT SET}"
+    
+    # Check if REPO_DIR is set, if not try to derive it
+    if [ -z "$REPO_DIR" ]; then
+        log_warning "REPO_DIR not set, attempting to derive from Git URL..."
+        REPO_NAME=$(basename "$GIT_REPO_URL" .git)
+        DERIVED_REPO_DIR="$PWD/$REPO_NAME"
+        
+        if [ -d "$DERIVED_REPO_DIR" ]; then
+            REPO_DIR="$DERIVED_REPO_DIR"
+            log "Derived REPO_DIR: $REPO_DIR"
+        else
+            log_error "Cannot determine repository directory."
+            log "Please ensure the repository was cloned successfully in Section 2."
+            exit 1
+        fi
+    fi
+    
+    # Navigate into the cloned directory
+    log "Navigating to repository directory: $REPO_DIR"
+    if ! cd "$REPO_DIR"; then
+        log_error "Failed to navigate to repository directory: $REPO_DIR"
+        log "Current directory: $(pwd)"
+        log "Directory contents:"
+        ls -la
+        exit 1
+    fi
+    
+    log_success "Successfully navigated to: $(pwd)"
+    
+    # Verify Docker configuration files exist
+    log "Checking for Docker configuration files..."
+    
+    DOCKER_FILES_FOUND=()
+    DOCKER_CONFIGS=(
+        "Dockerfile"
+        "docker-compose.yml"
+        "docker-compose.yaml"
+        "docker-compose.prod.yml"
+        "docker-compose.production.yml"
+        "compose.yml"
+        "compose.yaml"
+    )
+    
+    for docker_file in "${DOCKER_CONFIGS[@]}"; do
+        if [ -f "$docker_file" ]; then
+            DOCKER_FILES_FOUND+=("$docker_file")
+            log "Found: $docker_file"
+        fi
+    done
+    
+    # Check if we found any Docker files
+    if [ ${#DOCKER_FILES_FOUND[@]} -eq 0 ]; then
+        log_error "No Docker configuration files found in the repository!"
+        log "Expected one of: Dockerfile, docker-compose.yml, compose.yml, etc."
+        log "Current directory contents:"
+        ls -la
+        exit 1
+    fi
+    
+    log_success "Found ${#DOCKER_FILES_FOUND[@]} Docker configuration file(s): ${DOCKER_FILES_FOUND[*]}"
+    
+    # Additional validation for key files
+    if [ -f "Dockerfile" ]; then
+        log "Validating Dockerfile..."
+        if [ ! -s "Dockerfile" ]; then
+            log_error "Dockerfile exists but is empty"
+            exit 1
+        fi
+        
+        # Basic syntax check - look for FROM instruction
+        if ! grep -q "^FROM " Dockerfile; then
+            log_warning "Dockerfile does not appear to contain a FROM instruction"
+        else
+            BASE_IMAGE=$(grep "^FROM " Dockerfile | head -1 | cut -d' ' -f2)
+            log "Dockerfile uses base image: $BASE_IMAGE"
+        fi
+        
+        log_success "Dockerfile validation passed"
+    fi
+    
+    if [ -f "docker-compose.yml" ] || [ -f "docker-compose.yaml" ] || [ -f "compose.yml" ] || [ -f "compose.yaml" ]; then
+        log "Validating docker-compose file..."
+        
+        # Determine which compose file to check
+        COMPOSE_FILE=""
+        for file in "docker-compose.yml" "docker-compose.yaml" "compose.yml" "compose.yaml"; do
+            if [ -f "$file" ]; then
+                COMPOSE_FILE="$file"
+                break
+            fi
+        done
+        
+        if [ -n "$COMPOSE_FILE" ]; then
+            if [ ! -s "$COMPOSE_FILE" ]; then
+                log_error "$COMPOSE_FILE exists but is empty"
+                exit 1
+            fi
+            
+            # Basic YAML syntax check
+            if command -v docker-compose &> /dev/null || command -v docker &> /dev/null; then
+                if command -v docker &> /dev/null; then
+                    if docker compose -f "$COMPOSE_FILE" config --quiet &>/dev/null; then
+                        log_success "docker-compose file syntax is valid"
+                    else
+                        log_warning "docker-compose file may have syntax issues"
+                    fi
+                elif command -v docker-compose &> /dev/null; then
+                    if docker-compose -f "$COMPOSE_FILE" config --quiet &>/dev/null; then
+                        log_success "docker-compose file syntax is valid"
+                    else
+                        log_warning "docker-compose file may have syntax issues"
+                    fi
+                fi
+            else
+                log_warning "Docker not available for compose file validation"
+            fi
+        fi
+    fi
+    
+    # Display project structure for context
+    log "Project structure overview:"
+    find . -maxdepth 2 -type f -name "*.yml" -o -name "*.yaml" -o -name "Dockerfile" -o -name "*.env*" | head -10 | while read -r file; do
+        log "  - $file"
+    done
+    
+    # Count total files found for context
+    FILE_COUNT=$(find . -maxdepth 2 -type f -name "*.yml" -o -name "*.yaml" -o -name "Dockerfile" -o -name "*.env*" | wc -l)
+    if [ "$FILE_COUNT" -gt 10 ]; then
+        log "  ... and $((FILE_COUNT - 10)) more configuration files"
+    fi
+    
+    log_success "Section 3 completed successfully"
+    log "Current working directory: $(pwd)"
 }
 
 # Main execution
@@ -359,17 +514,21 @@ main() {
     # Section 2: Repository Cloning
     clone_repository
     
-    log_success "Sections 1-2 completed successfully"
+    # Section 3: Navigate and Verify Docker Files
+    navigate_and_verify_docker
+    
+    log_success "Sections 1-3 completed successfully"
     
     # Display next steps
     echo
     log "Next steps:"
-    log "1. Test SSH connection to remote server"
-    log "2. Build Docker images"
+    log "1. Build Docker images (if Dockerfile exists)"
+    log "2. Test SSH connection to remote server"
     log "3. Deploy to remote server"
     echo
     
     log "Repository ready at: $REPO_DIR"
+    log "Current directory: $(pwd)"
 }
 
 # Run main function
