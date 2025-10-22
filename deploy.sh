@@ -4,6 +4,8 @@
 # Section 1: Parameter Collection and Validation
 # Section 2: Repository Cloning
 # Section 3: Navigate and Verify Docker Files
+# Section 4: SSH into Remote Server (Connectivity Only)
+# Section 5: Prepare Remote Environment
 
 set -e  # Exit on any error
 
@@ -191,12 +193,12 @@ collect_parameters() {
     echo "------------------------------------------"
     
     # Confirm parameters
-    echo
-    read -p "Are these parameters correct? (y/n): " confirm
-    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-        log_warning "Parameter collection cancelled by user"
-        exit 1
-    fi
+    # echo
+    # read -p "Are these parameters correct? (y/n): " confirm
+    # if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+    #     log_warning "Parameter collection cancelled by user"
+    #     exit 1
+    # fi
     
     log_success "All parameters collected and validated successfully"
 }
@@ -497,6 +499,440 @@ navigate_and_verify_docker() {
     log "Current working directory: $(pwd)"
 }
 
+# Section 4: SSH into Remote Server (Connectivity Only)
+ssh_remote_server() {
+    log "Starting Section 4: SSH into Remote Server"
+    echo "=========================================="
+    echo "  Section 4: SSH into Remote Server"
+    echo "=========================================="
+    
+    # Build SSH base command for future use
+    SSH_BASE_CMD="ssh -i \"$SSH_KEY_PATH\" -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=yes"
+    REMOTE_SSH_CMD="$SSH_BASE_CMD $SSH_USERNAME@$SERVER_IP"
+    export REMOTE_SSH_CMD
+    
+    # Test 1: Basic connectivity check (ping) - skip if ping is not available
+    log "Testing basic network connectivity to $SERVER_IP..."
+    if command -v ping &> /dev/null; then
+        if ping -c 2 -W 2 "$SERVER_IP" &>/dev/null; then
+            log_success "Network connectivity test passed"
+        else
+            log_warning "Ping test failed (this might be normal if ICMP is blocked)"
+        fi
+    else
+        log_warning "Ping command not available, skipping network test"
+    fi
+    
+    # Test 2: Simple SSH connection test
+    log "Testing SSH connection to $SSH_USERNAME@$SERVER_IP..."
+    
+    # Use a simple echo command to test SSH
+    if eval "$REMOTE_SSH_CMD" "echo 'SSH connection successful'"; then
+        log_success "SSH connection test passed"
+    else
+        log_error "SSH connection test failed"
+        log "Please check:"
+        log "  - SSH key permissions: chmod 600 $SSH_KEY_PATH"
+        log "  - SSH key is added to authorized_keys on server"
+        log "  - Server is accessible on port 22"
+        log "  - Username and IP are correct"
+        exit 1
+    fi
+    
+    # Set up remote deployment directory path for future use
+    REMOTE_DEPLOY_DIR="/home/$SSH_USERNAME/deployments/$(basename "$GIT_REPO_URL" .git)"
+    export REMOTE_DEPLOY_DIR
+    
+    log_success "Section 4 completed successfully"
+    log "SSH connection established and verified"
+    log "Ready for remote environment setup in Section 5"
+}
+
+# # Section 5: Prepare Remote Environment
+# prepare_remote_environment() {
+#     log "Starting Section 5: Prepare Remote Environment"
+#     echo "=========================================="
+#     echo "  Section 5: Prepare Remote Environment"
+#     echo "=========================================="
+    
+#     log "Preparing remote server environment on $SERVER_IP..."
+    
+#     # Use NON-INTERACTIVE SSH command (NO -t flag)
+#     REMOTE_SSH_CMD="ssh -i \"$SSH_KEY_PATH\" -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=yes -o LogLevel=ERROR $SSH_USERNAME@$SERVER_IP"
+    
+#     # 1. Update system packages (without upgrade)
+#     log "Updating package lists on remote server..."
+#     if eval "$REMOTE_SSH_CMD" "sudo apt-get update -qq"; then
+#         log_success "Package lists updated successfully"
+#     else
+#         log_error "Failed to update package lists"
+#         exit 1
+#     fi
+    
+#     # 2. Install Docker if not present - IMPROVED DETECTION
+#     log "Checking Docker installation..."
+    
+#     # Test if Docker command actually works (not just exists)
+#     DOCKER_CHECK=$(eval "$REMOTE_SSH_CMD" "docker --version 2>/dev/null && echo 'DOCKER_WORKS' || echo 'DOCKER_MISSING'")
+    
+#     if [[ "$DOCKER_CHECK" == *"DOCKER_WORKS"* ]]; then
+#         DOCKER_VERSION=$(eval "$REMOTE_SSH_CMD" "docker --version 2>/dev/null" | head -1)
+#         log_success "Docker is already installed and working: $DOCKER_VERSION"
+#     else
+#         log "Docker not found or not working. Installing Docker..."
+        
+#         # Install Docker using official script - with auto-accept and no prompts
+# if eval "$REMOTE_SSH_CMD" 'bash -s' <<'EOF'
+#     set -e
+#     export DEBIAN_FRONTEND=noninteractive
+#     curl -fsSL https://get.docker.com -o get-docker.sh
+#     sudo sh get-docker.sh
+#     rm -f get-docker.sh
+# EOF
+# then
+
+#             log_success "Docker installed successfully"
+            
+#             # Start Docker service
+#             eval "$REMOTE_SSH_CMD" "sudo systemctl start docker && sudo systemctl enable docker"
+#         else
+#             log_error "Failed to install Docker"
+#             exit 1
+#         fi
+#     fi
+    
+#     # 3. Install Docker Compose if not present
+#     # log "Checking Docker Compose installation..."
+#     # COMPOSE_CHECK=$(eval "$REMOTE_SSH_CMD" "(docker-compose --version || docker compose version) 2>/dev/null && echo 'COMPOSE_WORKS' || echo 'COMPOSE_MISSING'")
+    
+#     # if [[ "$COMPOSE_CHECK" == *"COMPOSE_WORKS"* ]]; then
+#     #     log_success "Docker Compose is already installed"
+#     # else
+#     #     log "Docker Compose not found. Installing Docker Compose..."
+        
+#     #     if eval "$REMOTE_SSH_CMD" "
+#     #         sudo curl -L \"https://github.com/docker/compose/releases/latest/download/docker-compose-\$(uname -s)-\$(uname -m)\" -o /usr/local/bin/docker-compose
+#     #         sudo chmod +x /usr/local/bin/docker-compose
+#     #     "; then
+#     #         log_success "Docker Compose installed successfully"
+#     #     else
+#     #         log_error "Failed to install Docker Compose"
+#     #         exit 1
+#     #     fi
+#     # fi
+#     log "Checking Docker Compose installation..."
+
+# COMPOSE_CHECK=$(ssh -i "$SSH_KEY_PATH" \
+#     -o StrictHostKeyChecking=no \
+#     -o ConnectTimeout=10 \
+#     -o BatchMode=yes \
+#     -o LogLevel=ERROR \
+#     "$SSH_USERNAME@$SERVER_IP" \
+#     "docker-compose --version 2>/dev/null || docker compose version 2>/dev/null && echo COMPOSE_WORKS || echo COMPOSE_MISSING")
+
+# if [[ "$COMPOSE_CHECK" == *"COMPOSE_WORKS"* ]]; then
+#     log_success "Docker Compose is already installed"
+# else
+#     log "Docker Compose not found. Installing Docker Compose..."
+
+#     if ssh -i "$SSH_KEY_PATH" \
+#         -o StrictHostKeyChecking=no \
+#         -o ConnectTimeout=10 \
+#         -o BatchMode=yes \
+#         -o LogLevel=ERROR \
+#         "$SSH_USERNAME@$SERVER_IP" \
+#         "sudo curl -L \"https://github.com/docker/compose/releases/latest/download/docker-compose-\$(uname -s)-\$(uname -m)\" -o /usr/local/bin/docker-compose && sudo chmod +x /usr/local/bin/docker-compose"; then
+#         log_success "Docker Compose installed successfully"
+#     else
+#         log_error "Failed to install Docker Compose"
+#         exit 1
+#     fi
+# fi
+
+# # 4. Install Nginx if not present
+# log "Checking Nginx installation..."
+
+# NGINX_CHECK=$(ssh -i "$SSH_KEY_PATH" \
+#     -o StrictHostKeyChecking=no \
+#     -o ConnectTimeout=10 \
+#     -o BatchMode=yes \
+#     -o LogLevel=ERROR \
+#     -n \
+#     "$SSH_USERNAME@$SERVER_IP" \
+#     "nginx -v 2>&1 && echo NGINX_WORKS || echo NGINX_MISSING")
+
+# if [[ "$NGINX_CHECK" == *"NGINX_WORKS"* ]]; then
+#     log_success "Nginx is already installed"
+# else
+#     log "Nginx not found. Installing Nginx..."
+
+#     if ssh -i "$SSH_KEY_PATH" \
+#         -o StrictHostKeyChecking=no \
+#         -o ConnectTimeout=10 \
+#         -o BatchMode=yes \
+#         -o LogLevel=ERROR \
+#         -n \
+#         "$SSH_USERNAME@$SERVER_IP" \
+#         "export DEBIAN_FRONTEND=noninteractive; sudo apt-get update -qq && sudo apt-get install -y -qq nginx"; then
+#         log_success "Nginx installed successfully"
+#     else
+#         log_error "Failed to install Nginx"
+#         exit 1
+#     fi
+# fi
+
+    
+#     # 5. Enable and start services
+#     log "Enabling and starting services..."
+    
+#     # Enable Docker service
+#     if eval "$REMOTE_SSH_CMD" "sudo systemctl enable docker && sudo systemctl start docker"; then
+#         log_success "Docker service enabled and started"
+#     else
+#         log_error "Failed to enable/start Docker service"
+#         exit 1
+#     fi
+    
+#     # Enable Nginx service
+#     if eval "$REMOTE_SSH_CMD" "sudo systemctl enable nginx && sudo systemctl start nginx"; then
+#         log_success "Nginx service enabled and started"
+#     else
+#         log_error "Failed to enable/start Nginx service"
+#         exit 1
+#     fi
+    
+#     # 6. Confirm installation versions
+#     log "Confirming installation versions..."
+    
+#     DOCKER_VERSION=$(eval "$REMOTE_SSH_CMD" "docker --version 2>/dev/null" | head -1)
+#     DOCKER_COMPOSE_VERSION=$(eval "$REMOTE_SSH_CMD" "docker-compose --version 2>/dev/null || docker compose version --short 2>/dev/null")
+#     NGINX_VERSION=$(eval "$REMOTE_SSH_CMD" "nginx -v 2>&1 | head -1")
+    
+#     log_success "Installation versions confirmed:"
+#     log "  Docker: $DOCKER_VERSION"
+#     log "  Docker Compose: $DOCKER_COMPOSE_VERSION"
+#     log "  Nginx: $NGINX_VERSION"
+    
+#     # 7. Create deployment directory
+#     log "Creating deployment directory: $REMOTE_DEPLOY_DIR"
+#     if eval "$REMOTE_SSH_CMD" "mkdir -p \"$REMOTE_DEPLOY_DIR\""; then
+#         log_success "Deployment directory created successfully"
+#     else
+#         log_error "Failed to create deployment directory"
+#         exit 1
+#     fi
+    
+#     log_success "Section 5 completed successfully"
+#     log "Remote environment is ready for deployment"
+# }
+
+# Section 5: Prepare Remote Environment
+prepare_remote_environment() {
+    log "Starting Section 5: Prepare Remote Environment"
+    echo "=========================================="
+    echo "  Section 5: Prepare Remote Environment"
+    echo "=========================================="
+    
+    log "Preparing remote server environment on $SERVER_IP..."
+    
+    # Use NON-INTERACTIVE SSH command (NO -t flag)
+    REMOTE_SSH_CMD="ssh -i \"$SSH_KEY_PATH\" -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=yes -o LogLevel=ERROR $SSH_USERNAME@$SERVER_IP"
+    
+    # 1. Update system packages (without upgrade)
+    log "Updating package lists on remote server..."
+    if eval "$REMOTE_SSH_CMD" "sudo apt-get update -qq"; then
+        log_success "Package lists updated successfully"
+    else
+        log_error "Failed to update package lists"
+        exit 1
+    fi
+    
+    # 2. Install Docker if not present - IMPROVED DETECTION
+    log "Checking Docker installation..."
+    
+    # Test if Docker command actually works (not just exists)
+    DOCKER_CHECK=$(eval "$REMOTE_SSH_CMD" "docker --version 2>/dev/null && echo 'DOCKER_WORKS' || echo 'DOCKER_MISSING'")
+    
+    if [[ "$DOCKER_CHECK" == *"DOCKER_WORKS"* ]]; then
+        DOCKER_VERSION=$(eval "$REMOTE_SSH_CMD" "docker --version 2>/dev/null" | head -1)
+        log_success "Docker is already installed and working: $DOCKER_VERSION"
+    else
+        log "Docker not found or not working. Installing Docker..."
+        
+        # Install Docker using official script - with auto-accept and no prompts
+        if eval "$REMOTE_SSH_CMD" 'bash -s' <<'EOF'
+    set -e
+    export DEBIAN_FRONTEND=noninteractive
+    curl -fsSL https://get.docker.com -o get-docker.sh
+    sudo sh get-docker.sh
+    rm -f get-docker.sh
+EOF
+        then
+            log_success "Docker installed successfully"
+            
+            # Start Docker service
+            eval "$REMOTE_SSH_CMD" "sudo systemctl start docker && sudo systemctl enable docker"
+        else
+            log_error "Failed to install Docker"
+            exit 1
+        fi
+    fi
+    
+    # 3. Install Docker Compose if not present
+    log "Checking Docker Compose installation..."
+
+    COMPOSE_CHECK=$(ssh -i "$SSH_KEY_PATH" \
+        -o StrictHostKeyChecking=no \
+        -o ConnectTimeout=10 \
+        -o BatchMode=yes \
+        -o LogLevel=ERROR \
+        "$SSH_USERNAME@$SERVER_IP" \
+        "docker-compose --version 2>/dev/null || docker compose version 2>/dev/null && echo COMPOSE_WORKS || echo COMPOSE_MISSING")
+
+    if [[ "$COMPOSE_CHECK" == *"COMPOSE_WORKS"* ]]; then
+        log_success "Docker Compose is already installed"
+    else
+        log "Docker Compose not found. Installing Docker Compose..."
+
+        if ssh -i "$SSH_KEY_PATH" \
+            -o StrictHostKeyChecking=no \
+            -o ConnectTimeout=10 \
+            -o BatchMode=yes \
+            -o LogLevel=ERROR \
+            "$SSH_USERNAME@$SERVER_IP" \
+            "sudo curl -L \"https://github.com/docker/compose/releases/latest/download/docker-compose-\$(uname -s)-\$(uname -m)\" -o /usr/local/bin/docker-compose && sudo chmod +x /usr/local/bin/docker-compose"; then
+            log_success "Docker Compose installed successfully"
+        else
+            log_error "Failed to install Docker Compose"
+            exit 1
+        fi
+    fi
+
+    # 4. Install Nginx if not present - FIXED VERSION
+    log "Checking Nginx installation..."
+
+    NGINX_CHECK=$(ssh -i "$SSH_KEY_PATH" \
+        -o StrictHostKeyChecking=no \
+        -o ConnectTimeout=10 \
+        -o BatchMode=yes \
+        -o LogLevel=ERROR \
+        -n \
+        "$SSH_USERNAME@$SERVER_IP" \
+        "which nginx && echo NGINX_WORKS || echo NGINX_MISSING")
+
+    if [[ "$NGINX_CHECK" == *"NGINX_WORKS"* ]]; then
+        log_success "Nginx is already installed"
+    else
+        log "Nginx not found. Installing Nginx..."
+
+        # Install Nginx with proper error handling
+        if ssh -i "$SSH_KEY_PATH" \
+            -o StrictHostKeyChecking=no \
+            -o ConnectTimeout=10 \
+            -o BatchMode=yes \
+            -o LogLevel=ERROR \
+            -n \
+            "$SSH_USERNAME@$SERVER_IP" \
+            "export DEBIAN_FRONTEND=noninteractive && sudo apt-get install -y nginx"; then
+            
+            # Verify Nginx was actually installed
+            NGINX_VERIFY=$(ssh -i "$SSH_KEY_PATH" \
+                -o StrictHostKeyChecking=no \
+                -o ConnectTimeout=10 \
+                -o BatchMode=yes \
+                -o LogLevel=ERROR \
+                -n \
+                "$SSH_USERNAME@$SERVER_IP" \
+                "which nginx && echo 'INSTALLED' || echo 'FAILED'")
+            
+            if [[ "$NGINX_VERIFY" == *"INSTALLED"* ]]; then
+                log_success "Nginx installed successfully"
+            else
+                log_error "Nginx installation completed but nginx command not found"
+                exit 1
+            fi
+        else
+            log_error "Failed to install Nginx"
+            exit 1
+        fi
+    fi
+    
+    # 5. Enable and start services - FIXED NGINX SERVICE HANDLING
+    log "Enabling and starting services..."
+    
+    # Enable Docker service
+    if eval "$REMOTE_SSH_CMD" "sudo systemctl enable docker && sudo systemctl start docker"; then
+        log_success "Docker service enabled and started"
+    else
+        log_error "Failed to enable/start Docker service"
+        exit 1
+    fi
+    
+    # Enable Nginx service - with better error handling
+    log "Setting up Nginx service..."
+    NGINX_SERVICE_CHECK=$(eval "$REMOTE_SSH_CMD" "systemctl list-unit-files | grep -q nginx.service && echo 'EXISTS' || echo 'MISSING'")
+    
+    if [[ "$NGINX_SERVICE_CHECK" == *"EXISTS"* ]]; then
+        if eval "$REMOTE_SSH_CMD" "sudo systemctl enable nginx && sudo systemctl start nginx"; then
+            log_success "Nginx service enabled and started"
+        else
+            log_warning "Nginx service exists but failed to start. Checking status..."
+            # Check what's wrong with nginx
+            eval "$REMOTE_SSH_CMD" "sudo systemctl status nginx --no-pager || nginx -t || echo 'Nginx configuration check failed'"
+            log_warning "Continuing deployment despite Nginx service issues"
+        fi
+    else
+        log_warning "Nginx service unit not found. Nginx may be installed but service not configured."
+        log "Attempting to start nginx directly..."
+        if eval "$REMOTE_SSH_CMD" "sudo nginx -t && sudo nginx"; then
+            log_success "Nginx started directly (without systemd service)"
+        else
+            log_warning "Nginx failed to start. Continuing deployment without Nginx for now."
+        fi
+    fi
+    
+    # 6. Confirm installation versions
+    log "Confirming installation versions..."
+    
+    DOCKER_VERSION=$(eval "$REMOTE_SSH_CMD" "docker --version 2>/dev/null" | head -1)
+    DOCKER_COMPOSE_VERSION=$(eval "$REMOTE_SSH_CMD" "docker-compose --version 2>/dev/null || docker compose version --short 2>/dev/null")
+    NGINX_VERSION=$(eval "$REMOTE_SSH_CMD" "nginx -v 2>&1 | head -1")
+    
+    log_success "Installation versions confirmed:"
+    log "  Docker: $DOCKER_VERSION"
+    log "  Docker Compose: $DOCKER_COMPOSE_VERSION"
+    log "  Nginx: $NGINX_VERSION"
+    
+    # 7. Create deployment directory
+    log "Creating deployment directory: $REMOTE_DEPLOY_DIR"
+    if eval "$REMOTE_SSH_CMD" "mkdir -p \"$REMOTE_DEPLOY_DIR\""; then
+        log_success "Deployment directory created successfully"
+    else
+        log_error "Failed to create deployment directory"
+        exit 1
+    fi
+    
+    log_success "Section 5 completed successfully"
+    log "Remote environment is ready for deployment"
+}
+
+# Function to execute remote commands
+execute_remote() {
+    local command="$1"
+    local description="${2:-Executing remote command}"
+    
+    log "$description..."
+    log "Remote command: $command"
+    
+    if eval "$REMOTE_SSH_CMD" "\"$command\""; then
+        log_success "Remote command executed successfully"
+        return 0
+    else
+        log_error "Remote command failed: $command"
+        return 1
+    fi
+}
+
 # Main execution
 main() {
     log "Starting deployment script"
@@ -517,18 +953,26 @@ main() {
     # Section 3: Navigate and Verify Docker Files
     navigate_and_verify_docker
     
-    log_success "Sections 1-3 completed successfully"
+    # Section 4: SSH into Remote Server
+    ssh_remote_server
+    
+    # Section 5: Prepare Remote Environment
+    prepare_remote_environment
+    
+    log_success "Sections 1-5 completed successfully"
     
     # Display next steps
     echo
     log "Next steps:"
-    log "1. Build Docker images (if Dockerfile exists)"
-    log "2. Test SSH connection to remote server"
-    log "3. Deploy to remote server"
+    log "1. Transfer application files to remote server"
+    log "2. Build Docker images on remote server"
+    log "3. Deploy application using docker-compose"
+    log "4. Start containers and verify deployment"
     echo
     
-    log "Repository ready at: $REPO_DIR"
-    log "Current directory: $(pwd)"
+    log "Remote server is fully prepared and ready for deployment"
+    log "Deployment directory: $REMOTE_DEPLOY_DIR"
+    log "Application port: $APP_PORT"
 }
 
 # Run main function
