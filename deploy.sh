@@ -6,6 +6,7 @@
 # Section 3: Navigate and Verify Docker Files
 # Section 4: SSH into Remote Server (Connectivity Only)
 # Section 5: Prepare Remote Environment
+# Section 6: Deploy the Dockerized Application
 
 set -e  # Exit on any error
 
@@ -548,184 +549,6 @@ ssh_remote_server() {
     log "Ready for remote environment setup in Section 5"
 }
 
-# # Section 5: Prepare Remote Environment
-# prepare_remote_environment() {
-#     log "Starting Section 5: Prepare Remote Environment"
-#     echo "=========================================="
-#     echo "  Section 5: Prepare Remote Environment"
-#     echo "=========================================="
-    
-#     log "Preparing remote server environment on $SERVER_IP..."
-    
-#     # Use NON-INTERACTIVE SSH command (NO -t flag)
-#     REMOTE_SSH_CMD="ssh -i \"$SSH_KEY_PATH\" -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=yes -o LogLevel=ERROR $SSH_USERNAME@$SERVER_IP"
-    
-#     # 1. Update system packages (without upgrade)
-#     log "Updating package lists on remote server..."
-#     if eval "$REMOTE_SSH_CMD" "sudo apt-get update -qq"; then
-#         log_success "Package lists updated successfully"
-#     else
-#         log_error "Failed to update package lists"
-#         exit 1
-#     fi
-    
-#     # 2. Install Docker if not present - IMPROVED DETECTION
-#     log "Checking Docker installation..."
-    
-#     # Test if Docker command actually works (not just exists)
-#     DOCKER_CHECK=$(eval "$REMOTE_SSH_CMD" "docker --version 2>/dev/null && echo 'DOCKER_WORKS' || echo 'DOCKER_MISSING'")
-    
-#     if [[ "$DOCKER_CHECK" == *"DOCKER_WORKS"* ]]; then
-#         DOCKER_VERSION=$(eval "$REMOTE_SSH_CMD" "docker --version 2>/dev/null" | head -1)
-#         log_success "Docker is already installed and working: $DOCKER_VERSION"
-#     else
-#         log "Docker not found or not working. Installing Docker..."
-        
-#         # Install Docker using official script - with auto-accept and no prompts
-# if eval "$REMOTE_SSH_CMD" 'bash -s' <<'EOF'
-#     set -e
-#     export DEBIAN_FRONTEND=noninteractive
-#     curl -fsSL https://get.docker.com -o get-docker.sh
-#     sudo sh get-docker.sh
-#     rm -f get-docker.sh
-# EOF
-# then
-
-#             log_success "Docker installed successfully"
-            
-#             # Start Docker service
-#             eval "$REMOTE_SSH_CMD" "sudo systemctl start docker && sudo systemctl enable docker"
-#         else
-#             log_error "Failed to install Docker"
-#             exit 1
-#         fi
-#     fi
-    
-#     # 3. Install Docker Compose if not present
-#     # log "Checking Docker Compose installation..."
-#     # COMPOSE_CHECK=$(eval "$REMOTE_SSH_CMD" "(docker-compose --version || docker compose version) 2>/dev/null && echo 'COMPOSE_WORKS' || echo 'COMPOSE_MISSING'")
-    
-#     # if [[ "$COMPOSE_CHECK" == *"COMPOSE_WORKS"* ]]; then
-#     #     log_success "Docker Compose is already installed"
-#     # else
-#     #     log "Docker Compose not found. Installing Docker Compose..."
-        
-#     #     if eval "$REMOTE_SSH_CMD" "
-#     #         sudo curl -L \"https://github.com/docker/compose/releases/latest/download/docker-compose-\$(uname -s)-\$(uname -m)\" -o /usr/local/bin/docker-compose
-#     #         sudo chmod +x /usr/local/bin/docker-compose
-#     #     "; then
-#     #         log_success "Docker Compose installed successfully"
-#     #     else
-#     #         log_error "Failed to install Docker Compose"
-#     #         exit 1
-#     #     fi
-#     # fi
-#     log "Checking Docker Compose installation..."
-
-# COMPOSE_CHECK=$(ssh -i "$SSH_KEY_PATH" \
-#     -o StrictHostKeyChecking=no \
-#     -o ConnectTimeout=10 \
-#     -o BatchMode=yes \
-#     -o LogLevel=ERROR \
-#     "$SSH_USERNAME@$SERVER_IP" \
-#     "docker-compose --version 2>/dev/null || docker compose version 2>/dev/null && echo COMPOSE_WORKS || echo COMPOSE_MISSING")
-
-# if [[ "$COMPOSE_CHECK" == *"COMPOSE_WORKS"* ]]; then
-#     log_success "Docker Compose is already installed"
-# else
-#     log "Docker Compose not found. Installing Docker Compose..."
-
-#     if ssh -i "$SSH_KEY_PATH" \
-#         -o StrictHostKeyChecking=no \
-#         -o ConnectTimeout=10 \
-#         -o BatchMode=yes \
-#         -o LogLevel=ERROR \
-#         "$SSH_USERNAME@$SERVER_IP" \
-#         "sudo curl -L \"https://github.com/docker/compose/releases/latest/download/docker-compose-\$(uname -s)-\$(uname -m)\" -o /usr/local/bin/docker-compose && sudo chmod +x /usr/local/bin/docker-compose"; then
-#         log_success "Docker Compose installed successfully"
-#     else
-#         log_error "Failed to install Docker Compose"
-#         exit 1
-#     fi
-# fi
-
-# # 4. Install Nginx if not present
-# log "Checking Nginx installation..."
-
-# NGINX_CHECK=$(ssh -i "$SSH_KEY_PATH" \
-#     -o StrictHostKeyChecking=no \
-#     -o ConnectTimeout=10 \
-#     -o BatchMode=yes \
-#     -o LogLevel=ERROR \
-#     -n \
-#     "$SSH_USERNAME@$SERVER_IP" \
-#     "nginx -v 2>&1 && echo NGINX_WORKS || echo NGINX_MISSING")
-
-# if [[ "$NGINX_CHECK" == *"NGINX_WORKS"* ]]; then
-#     log_success "Nginx is already installed"
-# else
-#     log "Nginx not found. Installing Nginx..."
-
-#     if ssh -i "$SSH_KEY_PATH" \
-#         -o StrictHostKeyChecking=no \
-#         -o ConnectTimeout=10 \
-#         -o BatchMode=yes \
-#         -o LogLevel=ERROR \
-#         -n \
-#         "$SSH_USERNAME@$SERVER_IP" \
-#         "export DEBIAN_FRONTEND=noninteractive; sudo apt-get update -qq && sudo apt-get install -y -qq nginx"; then
-#         log_success "Nginx installed successfully"
-#     else
-#         log_error "Failed to install Nginx"
-#         exit 1
-#     fi
-# fi
-
-    
-#     # 5. Enable and start services
-#     log "Enabling and starting services..."
-    
-#     # Enable Docker service
-#     if eval "$REMOTE_SSH_CMD" "sudo systemctl enable docker && sudo systemctl start docker"; then
-#         log_success "Docker service enabled and started"
-#     else
-#         log_error "Failed to enable/start Docker service"
-#         exit 1
-#     fi
-    
-#     # Enable Nginx service
-#     if eval "$REMOTE_SSH_CMD" "sudo systemctl enable nginx && sudo systemctl start nginx"; then
-#         log_success "Nginx service enabled and started"
-#     else
-#         log_error "Failed to enable/start Nginx service"
-#         exit 1
-#     fi
-    
-#     # 6. Confirm installation versions
-#     log "Confirming installation versions..."
-    
-#     DOCKER_VERSION=$(eval "$REMOTE_SSH_CMD" "docker --version 2>/dev/null" | head -1)
-#     DOCKER_COMPOSE_VERSION=$(eval "$REMOTE_SSH_CMD" "docker-compose --version 2>/dev/null || docker compose version --short 2>/dev/null")
-#     NGINX_VERSION=$(eval "$REMOTE_SSH_CMD" "nginx -v 2>&1 | head -1")
-    
-#     log_success "Installation versions confirmed:"
-#     log "  Docker: $DOCKER_VERSION"
-#     log "  Docker Compose: $DOCKER_COMPOSE_VERSION"
-#     log "  Nginx: $NGINX_VERSION"
-    
-#     # 7. Create deployment directory
-#     log "Creating deployment directory: $REMOTE_DEPLOY_DIR"
-#     if eval "$REMOTE_SSH_CMD" "mkdir -p \"$REMOTE_DEPLOY_DIR\""; then
-#         log_success "Deployment directory created successfully"
-#     else
-#         log_error "Failed to create deployment directory"
-#         exit 1
-#     fi
-    
-#     log_success "Section 5 completed successfully"
-#     log "Remote environment is ready for deployment"
-# }
-
 # Section 5: Prepare Remote Environment
 prepare_remote_environment() {
     log "Starting Section 5: Prepare Remote Environment"
@@ -903,7 +726,26 @@ EOF
     log "  Docker Compose: $DOCKER_COMPOSE_VERSION"
     log "  Nginx: $NGINX_VERSION"
     
-    # 7. Create deployment directory
+    log_success "Section 5 completed successfully"
+    log "Remote environment is ready for deployment"
+}
+
+# Section 6: Deploy the Dockerized Application
+deploy_application() {
+    log "Starting Section 6: Deploy Dockerized Application"
+    echo "=========================================="
+    echo "  Section 6: Deploy Dockerized Application"
+    echo "=========================================="
+    
+    log "Deploying application to remote server..."
+    
+    # SSH command for remote execution
+    REMOTE_SSH_CMD="ssh -i \"$SSH_KEY_PATH\" -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=yes -o LogLevel=ERROR $SSH_USERNAME@$SERVER_IP"
+    
+    # 1. Create deployment directory on remote server
+    REMOTE_DEPLOY_DIR="/home/$SSH_USERNAME/deployments/$(basename "$GIT_REPO_URL" .git)"
+    export REMOTE_DEPLOY_DIR
+    
     log "Creating deployment directory: $REMOTE_DEPLOY_DIR"
     if eval "$REMOTE_SSH_CMD" "mkdir -p \"$REMOTE_DEPLOY_DIR\""; then
         log_success "Deployment directory created successfully"
@@ -912,8 +754,118 @@ EOF
         exit 1
     fi
     
-    log_success "Section 5 completed successfully"
-    log "Remote environment is ready for deployment"
+    # 2. Transfer project files via SCP
+    log "Transferring project files to remote server..."
+    
+    # Create SCP command
+    SCP_CMD="scp -i \"$SSH_KEY_PATH\" -o StrictHostKeyChecking=no -r"
+    
+    # Transfer the entire repository
+    if $SCP_CMD "$REPO_DIR"/* "$SSH_USERNAME@$SERVER_IP:$REMOTE_DEPLOY_DIR/"; then
+        log_success "Project files transferred successfully"
+    else
+        log_error "Failed to transfer project files"
+        exit 1
+    fi
+    
+    # 3. Navigate to project directory and build/run containers
+    log "Building and deploying Docker containers..."
+    
+    # Check which deployment method to use (Dockerfile vs docker-compose)
+    if [ -f "$REPO_DIR/docker-compose.yml" ] || [ -f "$REPO_DIR/docker-compose.yaml" ] || [ -f "$REPO_DIR/compose.yml" ] || [ -f "$REPO_DIR/compose.yaml" ]; then
+        log "Using docker-compose for deployment..."
+        
+        # Deploy using docker-compose
+        if eval "$REMOTE_SSH_CMD" "cd \"$REMOTE_DEPLOY_DIR\" && sudo docker-compose up -d"; then
+            log_success "Docker containers started via docker-compose"
+        else
+            log_error "Failed to start containers with docker-compose"
+            # Try with docker compose (newer version)
+            if eval "$REMOTE_SSH_CMD" "cd \"$REMOTE_DEPLOY_DIR\" && sudo docker compose up -d"; then
+                log_success "Docker containers started via docker compose"
+            else
+                log_error "Failed to start containers with docker compose"
+                exit 1
+            fi
+        fi
+    elif [ -f "$REPO_DIR/Dockerfile" ]; then
+        log "Using Dockerfile for deployment..."
+        
+        # Build Docker image
+        IMAGE_NAME="$(basename "$GIT_REPO_URL" .git):latest"
+        log "Building Docker image: $IMAGE_NAME"
+        
+        if eval "$REMOTE_SSH_CMD" "cd \"$REMOTE_DEPLOY_DIR\" && sudo docker build -t \"$IMAGE_NAME\" ."; then
+            log_success "Docker image built successfully"
+            
+            # Run Docker container
+            CONTAINER_NAME="$(basename "$GIT_REPO_URL" .git)-app"
+            log "Starting Docker container: $CONTAINER_NAME on port $APP_PORT"
+            
+            if eval "$REMOTE_SSH_CMD" "sudo docker run -d --name \"$CONTAINER_NAME\" -p $APP_PORT:$APP_PORT \"$IMAGE_NAME\""; then
+                log_success "Docker container started successfully"
+            else
+                log_error "Failed to start Docker container"
+                exit 1
+            fi
+        else
+            log_error "Failed to build Docker image"
+            exit 1
+        fi
+    else
+        log_error "No Docker configuration found for deployment"
+        exit 1
+    fi
+    
+    # 4. Validate container health and logs
+    log "Validating container health..."
+    
+    # Check if containers are running
+    if eval "$REMOTE_SSH_CMD" "sudo docker ps --format 'table {{.Names}}\t{{.Status}}'"; then
+        log_success "Container status check completed"
+    else
+        log_error "Failed to check container status"
+    fi
+    
+    # Show recent container logs
+    log "Checking container logs..."
+    eval "$REMOTE_SSH_CMD" "sudo docker ps -q | xargs -I {} sudo docker logs --tail=10 {}"
+    
+    # 5. Confirm app accessibility on the specified port
+    log "Testing application accessibility on port $APP_PORT..."
+    
+    # Test if the application is responding
+    if eval "$REMOTE_SSH_CMD" "curl -f -s -o /dev/null -w '%{http_code}' http://localhost:$APP_PORT || echo 'FAILED'"; then
+        RESPONSE_CODE=$(eval "$REMOTE_SSH_CMD" "curl -f -s -o /dev/null -w '%{http_code}' http://localhost:$APP_PORT || echo '000'")
+        
+        if [ "$RESPONSE_CODE" = "200" ] || [ "$RESPONSE_CODE" = "201" ] || [ "$RESPONSE_CODE" = "204" ]; then
+            log_success "Application is accessible and responding with HTTP $RESPONSE_CODE"
+        else
+            log_warning "Application is accessible but returned HTTP $RESPONSE_CODE"
+        fi
+    else
+        log_warning "Could not connect to application on port $APP_PORT"
+        log "Application might be starting up or configured on a different endpoint"
+    fi
+    
+    # Additional health checks
+    log "Performing additional health checks..."
+    
+    # Check container health status
+    eval "$REMOTE_SSH_CMD" "sudo docker ps --filter 'health=healthy' --format 'table {{.Names}}\t{{.Status}}'"
+    
+    # Check if any containers exited
+    EXITED_CONTAINERS=$(eval "$REMOTE_SSH_CMD" "sudo docker ps -a --filter 'status=exited' --format '{{.Names}}'")
+    if [ -n "$EXITED_CONTAINERS" ]; then
+        log_warning "Some containers have exited: $EXITED_CONTAINERS"
+        log "Checking exit logs:"
+        for container in $EXITED_CONTAINERS; do
+            eval "$REMOTE_SSH_CMD" "sudo docker logs \"$container\" | tail -20"
+        done
+    fi
+    
+    log_success "Section 6 completed successfully"
+    log "Application deployed and running on $SERVER_IP:$APP_PORT"
 }
 
 # Function to execute remote commands
@@ -959,20 +911,25 @@ main() {
     # Section 5: Prepare Remote Environment
     prepare_remote_environment
     
-    log_success "Sections 1-5 completed successfully"
+    # Section 6: Deploy Dockerized Application
+    deploy_application
     
-    # Display next steps
+    log_success "Sections 1-6 completed successfully"
+    
+    # Display deployment summary
+    echo
+    log "🎉 DEPLOYMENT COMPLETED SUCCESSFULLY 🎉"
+    log "=========================================="
+    log "Application URL: http://$SERVER_IP:$APP_PORT"
+    log "Deployment directory: $REMOTE_DEPLOY_DIR"
+    log "Container status:"
+    eval "$REMOTE_SSH_CMD" "sudo docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'"
     echo
     log "Next steps:"
-    log "1. Transfer application files to remote server"
-    log "2. Build Docker images on remote server"
-    log "3. Deploy application using docker-compose"
-    log "4. Start containers and verify deployment"
+    log "1. Test the application at http://$SERVER_IP:$APP_PORT"
+    log "2. Monitor logs: ssh -i $SSH_KEY_PATH $SSH_USERNAME@$SERVER_IP 'docker logs <container_name>'"
+    log "3. Scale services if needed"
     echo
-    
-    log "Remote server is fully prepared and ready for deployment"
-    log "Deployment directory: $REMOTE_DEPLOY_DIR"
-    log "Application port: $APP_PORT"
 }
 
 # Run main function
